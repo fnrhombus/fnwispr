@@ -28,43 +28,24 @@ fnwispr is a unified application that runs entirely on your Windows machine:
 - **Text Insertion**: Simulates keyboard input with `pyautogui`
 - **No External Services**: Everything runs on your machine
 
-## Quick Start
+## Installation
+
+Download the latest installer from the [Releases page](https://github.com/fnrhombus/fnwispr/releases):
+
+1. Download **`fnwispr-x.y.z-setup.exe`** from the latest release
+2. Run the installer — no admin rights required
+3. Launch fnwispr from the Start Menu or desktop shortcut
+
+The installer bundles everything (Python, Whisper, dependencies), so there's nothing else to install. The first launch downloads your selected Whisper model, which may take a minute.
+
+> **Coming soon**: `winget install fnrhombus.fnwispr`
 
 ### Prerequisites
 
-- Windows 10 or 11
-- Python 3.8 or higher
+- Windows 10 or 11 (64-bit)
 - A working microphone
 
-### Installation
-
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/yourusername/fnwispr.git
-   cd fnwispr
-   ```
-
-2. **Initialize the development environment**
-   ```powershell
-   .\init.ps1
-   ```
-
-   This creates a virtual environment and installs all dependencies. First run may take a few minutes to download the Whisper model.
-
-3. **Create configuration file** (optional)
-   ```bash
-   copy client/config.example.json client/config.json
-   ```
-
-   Edit `client/config.json` if you want to change the hotkey or other settings.
-
-4. **Run the application**
-   ```bash
-   .\venv\Scripts\Activate.ps1
-   python client/main.py
-   ```
-
-   Or in VS Code: Press `F5` to debug
+## Quick Start
 
 ### Usage
 
@@ -312,10 +293,8 @@ fnwispr/
 See [docs/PRD.md](docs/PRD.md) for detailed feature roadmap.
 
 **Upcoming features**:
-- System tray integration
 - Visual recording indicator
 - GPU acceleration support
-- MacOS and Linux client support
 - Real-time streaming transcription
 
 ## Contributing
@@ -341,7 +320,7 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## Support
 
-- **Issues**: Report bugs or request features via [GitHub Issues](https://github.com/yourusername/fnwispr/issues)
+- **Issues**: Report bugs or request features via [GitHub Issues](https://github.com/fnrhombus/fnwispr/issues)
 - **Documentation**: See [docs/](docs/) for detailed documentation
 - **FAQ**: Check the Troubleshooting section above
 
