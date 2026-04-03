@@ -87,23 +87,24 @@ jobs:
         if: steps.version.outputs.tag_exists == 'false'
         shell: bash
         run: |
-          if [ ! -f "dist/fnwispr/fnwispr.exe" ]; then
-            echo "::error::PyInstaller output not found at dist/fnwispr/fnwispr.exe"
+          if [ ! -f "packaging/dist/fnwispr/fnwispr.exe" ]; then
+            echo "::error::PyInstaller output not found at packaging/dist/fnwispr/fnwispr.exe"
             exit 1
           fi
           echo "Build output size:"
-          du -sh dist/fnwispr/
+          du -sh packaging/dist/fnwispr/
 
       - name: Build installer with Inno Setup
         if: steps.version.outputs.tag_exists == 'false'
+        working-directory: packaging
         run: |
-          iscc /DMyAppVersion=${{ steps.version.outputs.version }} packaging/fnwispr.iss
+          iscc /DMyAppVersion=${{ steps.version.outputs.version }} fnwispr.iss
 
       - name: Verify installer
         if: steps.version.outputs.tag_exists == 'false'
         shell: bash
         run: |
-          INSTALLER="dist/${{ steps.version.outputs.installer_name }}"
+          INSTALLER="packaging/dist/${{ steps.version.outputs.installer_name }}"
           if [ ! -f "$INSTALLER" ]; then
             echo "::error::Installer not found at $INSTALLER"
             exit 1
@@ -115,7 +116,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: installer
-          path: dist/${{ steps.version.outputs.installer_name }}
+          path: packaging/dist/${{ steps.version.outputs.installer_name }}
           if-no-files-found: error
           retention-days: 30
 
