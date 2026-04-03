@@ -42,21 +42,21 @@ class AlertManager:
             is_startup: Whether this is a startup error (vs config change)
         """
         if is_startup:
-            title = "Microphone Error"
-            message = (
-                f"Cannot initialize microphone '{device_name}'.\n\n"
-                f"fnwispr will continue running but recording may not work.\n"
-                f"Please select a different device from the tray menu or Settings.\n\n"
-                f"Technical details: {error_details}"
+            # On startup, just log — don't block with a popup.
+            # The tray tooltip shows the error state and the user can fix via tray menu.
+            logger.warning(
+                f"Cannot initialize microphone '{device_name}': {error_details}. "
+                f"Select a different device from the tray menu or Settings."
             )
-        else:
-            title = "Microphone Configuration Error"
-            message = (
-                f"Cannot initialize microphone '{device_name}'.\n\n"
-                f"Reverting to previous device.\n"
-                f"Please check your audio settings.\n\n"
-                f"Technical details: {error_details}"
-            )
+            return
+
+        title = "Microphone Configuration Error"
+        message = (
+            f"Cannot initialize microphone '{device_name}'.\n\n"
+            f"Reverting to previous device.\n"
+            f"Please check your audio settings.\n\n"
+            f"Technical details: {error_details}"
+        )
 
         try:
             if AlertManager._has_tkinter:

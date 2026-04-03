@@ -17,13 +17,13 @@ class TestModelLoadingErrors:
 
     def test_model_loading_failure_raises_exception(self, temp_config_file):
         """Test that failure to load model raises exception"""
-        with patch("whisper.load_model", side_effect=Exception("Model download failed")):
+        with patch("main.WhisperModel", side_effect=Exception("Model download failed")):
             with pytest.raises(Exception, match="Model download failed"):
                 FnwisprClient(temp_config_file)
 
     def test_model_loading_logs_error(self, temp_config_file, caplog):
         """Test that model loading errors are logged"""
-        with patch("whisper.load_model", side_effect=Exception("Model error")):
+        with patch("main.WhisperModel", side_effect=Exception("Model error")):
             with pytest.raises(Exception):
                 FnwisprClient(temp_config_file)
             assert "Failed to load Whisper model" in caplog.text
@@ -38,7 +38,7 @@ class TestConfigSaveErrors:
             temp_path = f.name
 
         try:
-            with patch("whisper.load_model"):
+            with patch("main.WhisperModel"):
                 client = FnwisprClient.__new__(FnwisprClient)
                 client.config = {}
 
@@ -60,7 +60,7 @@ class TestAudioRecordingErrors:
 
     def test_start_recording_stream_failure(self, temp_config_file, caplog):
         """Test handling of audio stream startup failure"""
-        with patch("whisper.load_model"):
+        with patch("main.WhisperModel"):
             with patch("sounddevice.InputStream", side_effect=Exception("Device not found")):
                 client = FnwisprClient(temp_config_file)
 
@@ -72,7 +72,7 @@ class TestAudioRecordingErrors:
 
     def test_stop_recording_stream_close_failure(self, temp_config_file, caplog):
         """Test handling of audio stream close failure"""
-        with patch("whisper.load_model"):
+        with patch("main.WhisperModel"):
             with patch("sounddevice.InputStream"):
                 client = FnwisprClient(temp_config_file)
                 client.recording = True
@@ -87,7 +87,7 @@ class TestAudioRecordingErrors:
 
     def test_stop_recording_closes_stream(self, temp_config_file):
         """Test that stop_recording properly closes the stream"""
-        with patch("whisper.load_model"):
+        with patch("main.WhisperModel"):
             client = FnwisprClient(temp_config_file)
             client.recording = True
             client.stream = MagicMock()
@@ -104,7 +104,7 @@ class TestAudioProcessingErrors:
 
     def test_process_audio_wav_write_failure(self, temp_config_file):
         """Test handling of WAV file write failure"""
-        with patch("whisper.load_model"):
+        with patch("main.WhisperModel"):
             client = FnwisprClient(temp_config_file)
             audio = np.sin(np.linspace(0, 1, 1000)).astype(np.float32)
             client.audio_data = [audio]
@@ -115,7 +115,7 @@ class TestAudioProcessingErrors:
 
     def test_process_audio_missing_wav_file(self, temp_config_file, caplog):
         """Test handling when WAV file is not created"""
-        with patch("whisper.load_model"):
+        with patch("main.WhisperModel"):
             client = FnwisprClient(temp_config_file)
             audio = np.sin(np.linspace(0, 1, 1000)).astype(np.float32)
             client.audio_data = [audio]
@@ -128,7 +128,7 @@ class TestAudioProcessingErrors:
 
     def test_process_audio_temp_file_cleanup_failure(self, temp_config_file, caplog):
         """Test handling of temp file deletion failure"""
-        with patch("whisper.load_model"):
+        with patch("main.WhisperModel"):
             client = FnwisprClient(temp_config_file)
             audio = np.sin(np.linspace(0, 1, 1000)).astype(np.float32)
             client.audio_data = [audio]
@@ -151,7 +151,7 @@ class TestKeyboardHandlerErrors:
 
     def test_on_press_exception_handling(self, temp_config_file):
         """Test that on_press handles exceptions gracefully"""
-        with patch("whisper.load_model"):
+        with patch("main.WhisperModel"):
             client = FnwisprClient(temp_config_file)
 
             # Mock normalize_key to raise exception
@@ -163,7 +163,7 @@ class TestKeyboardHandlerErrors:
 
     def test_on_release_exception_handling(self, temp_config_file):
         """Test that on_release handles exceptions gracefully"""
-        with patch("whisper.load_model"):
+        with patch("main.WhisperModel"):
             client = FnwisprClient(temp_config_file)
 
             # Mock normalize_key to raise exception
@@ -175,7 +175,7 @@ class TestKeyboardHandlerErrors:
 
     def test_on_press_starts_recording_when_hotkey_matched(self, temp_config_file):
         """Test that on_press starts recording when hotkey combo is pressed"""
-        with patch("whisper.load_model"):
+        with patch("main.WhisperModel"):
             with patch("sounddevice.InputStream"):
                 client = FnwisprClient(temp_config_file)
                 client.hotkey_combo = {1, 2}  # Simple set of keys for testing
@@ -190,7 +190,7 @@ class TestKeyboardHandlerErrors:
 
     def test_on_release_stops_recording_for_hotkey(self, temp_config_file):
         """Test that on_release stops recording when hotkey is released"""
-        with patch("whisper.load_model"):
+        with patch("main.WhisperModel"):
             client = FnwisprClient(temp_config_file)
             client.recording = True
             client.hotkey_combo = {1, 2}
@@ -204,7 +204,7 @@ class TestKeyboardHandlerErrors:
 
     def test_on_release_exits_on_escape(self, temp_config_file):
         """Test that on_release exits on Escape key"""
-        with patch("whisper.load_model"):
+        with patch("main.WhisperModel"):
             from pynput import keyboard
 
             client = FnwisprClient(temp_config_file)
@@ -221,7 +221,7 @@ class TestNormalizeKey:
 
     def test_normalize_ctrl_l_when_ctrl_in_combo(self, temp_config_file):
         """Test that ctrl_l normalizes to ctrl when ctrl is in hotkey"""
-        with patch("whisper.load_model"):
+        with patch("main.WhisperModel"):
             client = FnwisprClient(temp_config_file)
             from pynput import keyboard
 
@@ -232,7 +232,7 @@ class TestNormalizeKey:
 
     def test_normalize_ctrl_r_when_ctrl_in_combo(self, temp_config_file):
         """Test that ctrl_r normalizes to ctrl when ctrl is in hotkey"""
-        with patch("whisper.load_model"):
+        with patch("main.WhisperModel"):
             client = FnwisprClient(temp_config_file)
             from pynput import keyboard
 
@@ -243,7 +243,7 @@ class TestNormalizeKey:
 
     def test_normalize_alt_l_when_alt_in_combo(self, temp_config_file):
         """Test that alt_l normalizes to alt when alt is in hotkey"""
-        with patch("whisper.load_model"):
+        with patch("main.WhisperModel"):
             client = FnwisprClient(temp_config_file)
             from pynput import keyboard
 
@@ -254,7 +254,7 @@ class TestNormalizeKey:
 
     def test_normalize_alt_r_when_alt_in_combo(self, temp_config_file):
         """Test that alt_r normalizes to alt when alt is in hotkey"""
-        with patch("whisper.load_model"):
+        with patch("main.WhisperModel"):
             client = FnwisprClient(temp_config_file)
             from pynput import keyboard
 
@@ -265,7 +265,7 @@ class TestNormalizeKey:
 
     def test_normalize_shift_l_when_shift_in_combo(self, temp_config_file):
         """Test that shift_l normalizes to shift when shift is in hotkey"""
-        with patch("whisper.load_model"):
+        with patch("main.WhisperModel"):
             client = FnwisprClient(temp_config_file)
             from pynput import keyboard
 
@@ -276,7 +276,7 @@ class TestNormalizeKey:
 
     def test_normalize_shift_r_when_shift_in_combo(self, temp_config_file):
         """Test that shift_r normalizes to shift when shift is in hotkey"""
-        with patch("whisper.load_model"):
+        with patch("main.WhisperModel"):
             client = FnwisprClient(temp_config_file)
             from pynput import keyboard
 
@@ -287,7 +287,7 @@ class TestNormalizeKey:
 
     def test_no_normalize_when_base_not_in_combo(self, temp_config_file):
         """Test that left/right variants are NOT normalized when base key not in combo"""
-        with patch("whisper.load_model"):
+        with patch("main.WhisperModel"):
             client = FnwisprClient(temp_config_file)
             from pynput import keyboard
 
@@ -300,7 +300,7 @@ class TestNormalizeKey:
 
     def test_non_modifier_key_unchanged(self, temp_config_file):
         """Test that non-modifier keys are returned unchanged"""
-        with patch("whisper.load_model"):
+        with patch("main.WhisperModel"):
             client = FnwisprClient(temp_config_file)
             from pynput import keyboard
 

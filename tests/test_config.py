@@ -19,7 +19,7 @@ class TestConfigLoading:
 
     def test_load_config_from_file(self, temp_config_file):
         """Test loading config from an existing file"""
-        with patch("whisper.load_model"):
+        with patch("main.WhisperModel"):
             client = FnwisprClient(temp_config_file)
             assert client.config["hotkey"] == "ctrl+alt"
             assert client.config["model"] == "base"
@@ -27,7 +27,7 @@ class TestConfigLoading:
 
     def test_load_config_creates_default_if_missing(self):
         """Test that default config is created if file doesn't exist"""
-        with patch("whisper.load_model"):
+        with patch("main.WhisperModel"):
             nonexistent_path = "/tmp/nonexistent_config_12345.json"
             client = FnwisprClient(nonexistent_path)
 
@@ -45,7 +45,7 @@ class TestConfigLoading:
             temp_path = f.name
 
         try:
-            with patch("whisper.load_model"):
+            with patch("main.WhisperModel"):
                 with pytest.raises(SystemExit):
                     FnwisprClient(temp_path)
         finally:
@@ -53,7 +53,7 @@ class TestConfigLoading:
 
     def test_config_default_values(self, temp_config_file):
         """Test that config has all required default values"""
-        with patch("whisper.load_model"):
+        with patch("main.WhisperModel"):
             client = FnwisprClient(temp_config_file)
 
             assert "hotkey" in client.config
@@ -76,7 +76,7 @@ class TestConfigLoading:
             temp_path = f.name
 
         try:
-            with patch("whisper.load_model"):
+            with patch("main.WhisperModel"):
                 client = FnwisprClient(temp_path)
                 assert client.config["hotkey"] == "ctrl+shift+s"
                 assert client.config["model"] == "small"
@@ -91,7 +91,7 @@ class TestHotkeyParsing:
 
     def test_parse_simple_modifier(self):
         """Test parsing simple modifier combinations"""
-        with patch("whisper.load_model"):
+        with patch("main.WhisperModel"):
             client = FnwisprClient.__new__(FnwisprClient)
             client.config = {}
 
@@ -100,7 +100,7 @@ class TestHotkeyParsing:
 
     def test_parse_ctrl_variants(self):
         """Test parsing ctrl with specific variants"""
-        with patch("whisper.load_model"):
+        with patch("main.WhisperModel"):
             client = FnwisprClient.__new__(FnwisprClient)
             client.config = {}
 
@@ -117,7 +117,7 @@ class TestHotkeyParsing:
 
     def test_parse_alt_variants(self):
         """Test parsing alt with specific variants"""
-        with patch("whisper.load_model"):
+        with patch("main.WhisperModel"):
             client = FnwisprClient.__new__(FnwisprClient)
             client.config = {}
 
@@ -132,7 +132,7 @@ class TestHotkeyParsing:
 
     def test_parse_shift_variants(self):
         """Test parsing shift with specific variants"""
-        with patch("whisper.load_model"):
+        with patch("main.WhisperModel"):
             client = FnwisprClient.__new__(FnwisprClient)
             client.config = {}
 
@@ -147,7 +147,7 @@ class TestHotkeyParsing:
 
     def test_parse_hotkey_with_character(self):
         """Test parsing hotkey with regular character"""
-        with patch("whisper.load_model"):
+        with patch("main.WhisperModel"):
             client = FnwisprClient.__new__(FnwisprClient)
             client.config = {}
 
@@ -156,7 +156,7 @@ class TestHotkeyParsing:
 
     def test_parse_hotkey_whitespace_handling(self):
         """Test that whitespace is handled correctly"""
-        with patch("whisper.load_model"):
+        with patch("main.WhisperModel"):
             client = FnwisprClient.__new__(FnwisprClient)
             client.config = {}
 
@@ -170,7 +170,7 @@ class TestHotkeyParsing:
 
     def test_parse_hotkey_case_insensitive(self):
         """Test that hotkey parsing is case insensitive"""
-        with patch("whisper.load_model"):
+        with patch("main.WhisperModel"):
             client = FnwisprClient.__new__(FnwisprClient)
             client.config = {}
 
@@ -182,7 +182,7 @@ class TestHotkeyParsing:
 
     def test_parse_invalid_key(self):
         """Test parsing with unknown keys"""
-        with patch("whisper.load_model"):
+        with patch("main.WhisperModel"):
             client = FnwisprClient.__new__(FnwisprClient)
             client.config = {}
 
