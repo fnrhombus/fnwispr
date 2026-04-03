@@ -54,17 +54,14 @@ class TrayManager:
         """Load and convert icon from SVG or create fallback"""
         if self.icon_path:
             try:
-                if self.icon_path.endswith(".svg"):
-                    # Convert SVG to PNG
-                    import cairosvg
-                    import io
-
-                    png_data = io.BytesIO()
-                    cairosvg.svg2png(url=self.icon_path, write_to=png_data, output_width=256, output_height=256)
-                    png_data.seek(0)
-                    return Image.open(png_data).convert("RGBA")
-                else:
-                    return Image.open(self.icon_path).convert("RGBA")
+                # Prefer .ico version if available (avoids cairosvg dependency)
+                ico_path = self.icon_path.replace(".svg", ".ico") if self.icon_path.endswith(".svg") else self.icon_path
+                if ico_path != self.icon_path:
+                    import os
+                    if os.path.exists(ico_path):
+                        return Image.open(ico_path).convert("RGBA")
+                # Try loading directly (works for .ico, .png, etc.)
+                return Image.open(self.icon_path).convert("RGBA")
             except Exception as e:
                 logger.warning(f"Failed to load icon from {self.icon_path}: {e}, using fallback")
 
