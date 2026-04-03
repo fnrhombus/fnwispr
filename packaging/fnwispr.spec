@@ -50,6 +50,7 @@ a = Analysis(
     datas=whisper_datas
     + tiktoken_datas
     + [
+        ("../VERSION", "."),
         ("../client/icons/app_icon.svg", "icons"),
         ("../client/icons/app_icon.ico", "icons"),
         ("../client/alerts.py", "."),

@@ -3,9 +3,24 @@ fnwispr - Windows Speech-to-Text Hotkey Application
 Captures audio when hotkey is pressed and inserts transcribed text using local Whisper
 """
 
+import importlib.resources
 from pathlib import Path
 
-__version__ = (Path(__file__).parent.parent / "VERSION").read_text(encoding="utf-8").strip()
+
+def _read_version() -> str:
+    """Read version from VERSION file, handling both dev and PyInstaller environments."""
+    # Development: VERSION is at repo root (parent of client/)
+    version_file = Path(__file__).parent.parent / "VERSION"
+    if version_file.is_file():
+        return version_file.read_text(encoding="utf-8").strip()
+    # PyInstaller: VERSION is bundled alongside main.py
+    version_file = Path(__file__).parent / "VERSION"
+    if version_file.is_file():
+        return version_file.read_text(encoding="utf-8").strip()
+    return "0.0.0"
+
+
+__version__ = _read_version()
 
 import json
 import logging
