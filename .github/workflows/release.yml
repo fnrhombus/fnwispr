@@ -1,20 +1,12 @@
-# Build, sign, and release fnwispr for Windows.
+# Build and release fnwispr for Windows.
 #
 # Trigger: any push to main
 # Flow:
-#   1. build   — PyInstaller bundle → Inno Setup installer → upload unsigned artifact
-#   2. sign    — SignPath signs the installer (free for OSS)
-#   3. release — Tag the commit, create GitHub Release with the signed installer
+#   1. build   — PyInstaller bundle → Inno Setup installer
+#   2. release — Tag the commit, create draft GitHub Release with installer
 #
 # Version is read from the VERSION file in the repo root.
-#
-# Required secrets (configure in repo Settings → Secrets):
-#   SIGNPATH_API_TOKEN        — from SignPath.io (CI user token)
-#   SIGNPATH_ORGANIZATION_ID  — your SignPath org ID
-#
-# Required SignPath configuration:
-#   Project slug: fnwispr
-#   Signing policy slug: release-signing
+# If the tag already exists, the workflow skips (no duplicate releases).
 
 name: Release
 
@@ -23,19 +15,17 @@ on:
     branches:
       - main
 
-  # Allow manual trigger for testing the workflow
+  # Allow manual trigger for re-running
   workflow_dispatch:
 
 permissions:
-  contents: write       # create tags and releases
-  actions: read         # SignPath needs to read artifact
-  id-token: write       # SignPath OIDC authentication
+  contents: write
 
 env:
   PYTHON_VERSION: "3.11"
 
 jobs:
-  # ─── Job 1: Build the unsigned installer ────────────────────────────
+  # ─── Job 1: Build the installer ────────────────────────────────────
   build:
     name: Build installer
     runs-on: windows-latest
@@ -46,6 +36,8 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # need tags for duplicate check
 
       - name: Read version from VERSION file
         id: version
@@ -118,54 +110,19 @@ jobs:
           fi
           echo "Installer size: $(du -h "$INSTALLER" | cut -f1)"
 
-      - name: Upload unsigned installer
+      - name: Upload installer artifact
         if: steps.version.outputs.tag_exists == 'false'
         uses: actions/upload-artifact@v4
         with:
-          name: unsigned-installer
+          name: installer
           path: dist/${{ steps.version.outputs.installer_name }}
-          if-no-files-found: error
-          retention-days: 7
-
-  # ─── Job 2: Sign with SignPath ──────────────────────────────────────
-  sign:
-    name: Sign installer
-    needs: build
-    runs-on: ubuntu-latest
-    if: needs.build.outputs.tag_exists == 'false'
-
-    steps:
-      - name: Download unsigned installer
-        uses: actions/download-artifact@v4
-        with:
-          name: unsigned-installer
-          path: unsigned/
-
-      - name: Submit signing request to SignPath
-        uses: signpath/github-action-submit-signing-request@v1
-        with:
-          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
-          organization-id: ${{ secrets.SIGNPATH_ORGANIZATION_ID }}
-          project-slug: fnwispr
-          signing-policy-slug: release-signing
-          artifact-configuration-slug: default
-          github-artifact-id: unsigned-installer
-          wait-for-completion: true
-          wait-for-completion-timeout-in-seconds: 600
-          output-artifact-directory: signed/
-
-      - name: Upload signed installer
-        uses: actions/upload-artifact@v4
-        with:
-          name: signed-installer
-          path: signed/${{ needs.build.outputs.installer_name }}
           if-no-files-found: error
           retention-days: 30
 
-  # ─── Job 3: Tag and create GitHub Release ───────────────────────────
+  # ─── Job 2: Tag and create GitHub Release ───────────────────────────
   release:
     name: Create release
-    needs: [build, sign]
+    needs: build
     runs-on: ubuntu-latest
     if: needs.build.outputs.tag_exists == 'false'
 
@@ -177,10 +134,10 @@ jobs:
           git tag "v${{ needs.build.outputs.version }}"
           git push origin "v${{ needs.build.outputs.version }}"
 
-      - name: Download signed installer
+      - name: Download installer
         uses: actions/download-artifact@v4
         with:
-          name: signed-installer
+          name: installer
           path: release/
 
       - name: Generate SHA256 checksum
