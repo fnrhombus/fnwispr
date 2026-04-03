@@ -31,7 +31,7 @@ DefaultDirName={autopf}\{#MyAppName}
 DefaultGroupName={#MyAppName}
 DisableProgramGroupPage=yes
 LicenseFile=..\LICENSE
-OutputDir=..\dist
+OutputDir=dist
 OutputBaseFilename=fnwispr-{#MyAppVersion}-setup
 SetupIconFile=..\client\icons\app_icon.ico
 Compression=lzma2/ultra64
@@ -58,7 +58,7 @@ Name: "autostart"; Description: "Start {#MyAppName} when Windows starts"; GroupD
 
 [Files]
 ; Include the entire PyInstaller output directory
-Source: "..\dist\fnwispr\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "dist\fnwispr\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [Icons]
 Name: "{group}\{#MyAppName}"; Filename: "{app}\{#MyAppExeName}"
