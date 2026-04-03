@@ -11,6 +11,7 @@ import numpy as np
 import pytest
 from scipy.io.wavfile import write as write_wav
 
+from conftest import make_transcribe_result
 from main import FnwisprClient
 
 
@@ -31,16 +32,13 @@ class TestEndToEndWorkflow:
             temp_config = f.name
 
         try:
-            with patch("whisper.load_model") as mock_load:
+            with patch("main.WhisperModel") as mock_cls:
                 # Setup mock Whisper
                 mock_model = MagicMock()
                 mock_model.transcribe = MagicMock(
-                    return_value={
-                        "text": "Hello world",
-                        "language": "en",
-                    }
+                    return_value=make_transcribe_result("Hello world")
                 )
-                mock_load.return_value = mock_model
+                mock_cls.return_value = mock_model
 
                 with patch("sounddevice.InputStream"):
                     with patch("pyautogui.typewrite") as mock_typewrite:
@@ -81,17 +79,17 @@ class TestEndToEndWorkflow:
             temp_config = f.name
 
         try:
-            with patch("whisper.load_model") as mock_load:
+            with patch("main.WhisperModel") as mock_cls:
                 mock_model = MagicMock()
 
                 # Setup different responses for each call
                 responses = [
-                    {"text": "First recording", "language": "en"},
-                    {"text": "Second recording", "language": "en"},
-                    {"text": "Third recording", "language": "en"},
+                    make_transcribe_result("First recording"),
+                    make_transcribe_result("Second recording"),
+                    make_transcribe_result("Third recording"),
                 ]
                 mock_model.transcribe = MagicMock(side_effect=responses)
-                mock_load.return_value = mock_model
+                mock_cls.return_value = mock_model
 
                 with patch("sounddevice.InputStream"):
                     with patch("pyautogui.typewrite"):
@@ -130,12 +128,12 @@ class TestEndToEndWorkflow:
                 temp_config = f.name
 
             try:
-                with patch("whisper.load_model") as mock_load:
+                with patch("main.WhisperModel") as mock_cls:
                     mock_model = MagicMock()
                     mock_model.transcribe = MagicMock(
-                        return_value={"text": "Test", "language": language or "en"}
+                        return_value=make_transcribe_result("Test", language or "en")
                     )
-                    mock_load.return_value = mock_model
+                    mock_cls.return_value = mock_model
 
                     with patch("sounddevice.InputStream"):
                         with patch("pyautogui.typewrite"):
@@ -163,16 +161,16 @@ class TestEndToEndWorkflow:
                 temp_config = f.name
 
             try:
-                with patch("whisper.load_model") as mock_load:
+                with patch("main.WhisperModel") as mock_cls:
                     mock_model = MagicMock()
-                    mock_load.return_value = mock_model
+                    mock_cls.return_value = mock_model
 
                     with patch("sounddevice.InputStream"):
                         client = FnwisprClient(temp_config)
                         assert client.config["model"] == model_size
 
-                        # Verify load_model was called with correct model size
-                        mock_load.assert_called_with(model_size)
+                        # Verify WhisperModel was called with correct model size as first arg
+                        assert mock_cls.call_args[0][0] == model_size
 
             finally:
                 if os.path.exists(temp_config):
@@ -196,17 +194,17 @@ class TestErrorRecovery:
             temp_config = f.name
 
         try:
-            with patch("whisper.load_model") as mock_load:
+            with patch("main.WhisperModel") as mock_cls:
                 mock_model = MagicMock()
 
                 # First call fails, second succeeds
                 mock_model.transcribe = MagicMock(
                     side_effect=[
                         Exception("Transcription failed"),
-                        {"text": "Success", "language": "en"},
+                        make_transcribe_result("Success"),
                     ]
                 )
-                mock_load.return_value = mock_model
+                mock_cls.return_value = mock_model
 
                 with patch("sounddevice.InputStream"):
                     with patch("pyautogui.typewrite") as mock_typewrite:
@@ -247,12 +245,12 @@ class TestErrorRecovery:
             temp_config = f.name
 
         try:
-            with patch("whisper.load_model") as mock_load:
+            with patch("main.WhisperModel") as mock_cls:
                 mock_model = MagicMock()
                 mock_model.transcribe = MagicMock(
-                    return_value={"text": "Normal transcription", "language": "en"}
+                    return_value=make_transcribe_result("Normal transcription")
                 )
-                mock_load.return_value = mock_model
+                mock_cls.return_value = mock_model
 
                 with patch("sounddevice.InputStream"):
                     with patch("pyautogui.typewrite"):
@@ -293,7 +291,7 @@ class TestConfigurationVariations:
             temp_config = f.name
 
         try:
-            with patch("whisper.load_model"):
+            with patch("main.WhisperModel"):
                 with patch("sounddevice.InputStream") as mock_stream:
                     client = FnwisprClient(temp_config)
                     client.start_recording()
@@ -320,7 +318,7 @@ class TestConfigurationVariations:
             temp_config = f.name
 
         try:
-            with patch("whisper.load_model"):
+            with patch("main.WhisperModel"):
                 with patch("sounddevice.InputStream") as mock_stream:
                     client = FnwisprClient(temp_config)
                     assert client.sample_rate == 44100

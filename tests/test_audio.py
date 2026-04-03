@@ -10,6 +10,7 @@ import numpy as np
 import pytest
 from scipy.io.wavfile import write as write_wav
 
+from conftest import make_transcribe_result
 from main import FnwisprClient
 
 
@@ -18,7 +19,7 @@ class TestAudioRecording:
 
     def test_start_recording_sets_flag(self, mock_sounddevice, temp_config_file):
         """Test that start_recording sets the recording flag"""
-        with patch("whisper.load_model"):
+        with patch("main.WhisperModel"):
             client = FnwisprClient(temp_config_file)
 
             assert not client.recording
@@ -29,7 +30,7 @@ class TestAudioRecording:
         self, mock_sounddevice, temp_config_file
     ):
         """Test that start_recording initializes audio_data list"""
-        with patch("whisper.load_model"):
+        with patch("main.WhisperModel"):
             client = FnwisprClient(temp_config_file)
 
             # Add some data first
@@ -41,7 +42,7 @@ class TestAudioRecording:
 
     def test_stop_recording_clears_flag(self, mock_sounddevice, temp_config_file):
         """Test that stop_recording clears the recording flag"""
-        with patch("whisper.load_model"):
+        with patch("main.WhisperModel"):
             client = FnwisprClient(temp_config_file)
             client.recording = True
 
@@ -54,7 +55,7 @@ class TestAudioRecording:
         self, mock_sounddevice, temp_config_file
     ):
         """Test that audio callback appends data when recording is active"""
-        with patch("whisper.load_model"):
+        with patch("main.WhisperModel"):
             client = FnwisprClient(temp_config_file)
             client.recording = True
 
@@ -73,7 +74,7 @@ class TestAudioRecording:
         self, mock_sounddevice, temp_config_file
     ):
         """Test that audio callback ignores data when not recording"""
-        with patch("whisper.load_model"):
+        with patch("main.WhisperModel"):
             client = FnwisprClient(temp_config_file)
             client.recording = False
 
@@ -89,7 +90,7 @@ class TestAudioRecording:
         self, mock_sounddevice, temp_config_file, capsys
     ):
         """Test that audio callback logs status messages"""
-        with patch("whisper.load_model"):
+        with patch("main.WhisperModel"):
             client = FnwisprClient(temp_config_file)
             client.recording = True
 
@@ -108,7 +109,7 @@ class TestAudioProcessing:
 
     def test_process_audio_with_no_data(self, temp_config_file):
         """Test that process_audio handles empty audio data"""
-        with patch("whisper.load_model"):
+        with patch("main.WhisperModel"):
             client = FnwisprClient(temp_config_file)
             client.audio_data = []
 
@@ -117,7 +118,7 @@ class TestAudioProcessing:
 
     def test_process_audio_concatenates_chunks(self, temp_config_file):
         """Test that process_audio concatenates audio chunks"""
-        with patch("whisper.load_model"):
+        with patch("main.WhisperModel"):
             client = FnwisprClient(temp_config_file)
 
             # Create multiple audio chunks
@@ -133,7 +134,7 @@ class TestAudioProcessing:
 
     def test_process_audio_creates_temporary_file(self, temp_config_file):
         """Test that process_audio creates a temporary WAV file"""
-        with patch("whisper.load_model"):
+        with patch("main.WhisperModel"):
             client = FnwisprClient(temp_config_file)
 
             # Create simple audio data
@@ -153,7 +154,7 @@ class TestAudioProcessing:
 
     def test_process_audio_cleans_up_temporary_file(self, temp_config_file):
         """Test that process_audio cleans up temporary files"""
-        with patch("whisper.load_model"):
+        with patch("main.WhisperModel"):
             client = FnwisprClient(temp_config_file)
 
             audio = np.sin(np.linspace(0, 1, 1000)).astype(np.float32)
@@ -184,12 +185,12 @@ class TestAudioFormatHandling:
 
     def test_transcribe_audio_handles_int16(self, temp_config_file, temp_wav_file):
         """Test transcription of int16 audio"""
-        with patch("whisper.load_model") as mock_load:
+        with patch("main.WhisperModel") as mock_cls:
             mock_model = MagicMock()
             mock_model.transcribe = MagicMock(
-                return_value={"text": "test transcription", "language": "en"}
+                return_value=make_transcribe_result("test transcription")
             )
-            mock_load.return_value = mock_model
+            mock_cls.return_value = mock_model
 
             client = FnwisprClient(temp_config_file)
             result = client.transcribe_audio(temp_wav_file)
@@ -207,12 +208,12 @@ class TestAudioFormatHandling:
             audio_int16 = np.array([100, 200, 300, -100], dtype=np.int16)
             write_wav(temp_path, sample_rate, audio_int16)
 
-            with patch("whisper.load_model") as mock_load:
+            with patch("main.WhisperModel") as mock_cls:
                 mock_model = MagicMock()
                 mock_model.transcribe = MagicMock(
-                    return_value={"text": "test", "language": "en"}
+                    return_value=make_transcribe_result("test")
                 )
-                mock_load.return_value = mock_model
+                mock_cls.return_value = mock_model
 
                 client = FnwisprClient(temp_config_file)
                 client.transcribe_audio(temp_path)
@@ -241,12 +242,12 @@ class TestAudioFormatHandling:
             )
             write_wav(temp_path, sample_rate, stereo_audio)
 
-            with patch("whisper.load_model") as mock_load:
+            with patch("main.WhisperModel") as mock_cls:
                 mock_model = MagicMock()
                 mock_model.transcribe = MagicMock(
-                    return_value={"text": "test", "language": "en"}
+                    return_value=make_transcribe_result("test")
                 )
-                mock_load.return_value = mock_model
+                mock_cls.return_value = mock_model
 
                 client = FnwisprClient(temp_config_file)
                 client.transcribe_audio(temp_path)
@@ -271,12 +272,12 @@ class TestAudioFormatHandling:
             audio_int32 = np.array([100000, 200000, -100000], dtype=np.int32)
             write_wav(temp_path, sample_rate, audio_int32)
 
-            with patch("whisper.load_model") as mock_load:
+            with patch("main.WhisperModel") as mock_cls:
                 mock_model = MagicMock()
                 mock_model.transcribe = MagicMock(
-                    return_value={"text": "test", "language": "en"}
+                    return_value=make_transcribe_result("test")
                 )
-                mock_load.return_value = mock_model
+                mock_cls.return_value = mock_model
 
                 client = FnwisprClient(temp_config_file)
                 client.transcribe_audio(temp_path)
@@ -303,12 +304,12 @@ class TestAudioFormatHandling:
             audio_uint8 = np.array([128, 200, 100], dtype=np.uint8)
             write_wav(temp_path, sample_rate, audio_uint8)
 
-            with patch("whisper.load_model") as mock_load:
+            with patch("main.WhisperModel") as mock_cls:
                 mock_model = MagicMock()
                 mock_model.transcribe = MagicMock(
-                    return_value={"text": "test", "language": "en"}
+                    return_value=make_transcribe_result("test")
                 )
-                mock_load.return_value = mock_model
+                mock_cls.return_value = mock_model
 
                 client = FnwisprClient(temp_config_file)
                 client.transcribe_audio(temp_path)
@@ -335,12 +336,12 @@ class TestAudioFormatHandling:
             audio_float32 = np.array([0.1, 0.5, -0.3], dtype=np.float32)
             write_wav(temp_path, sample_rate, audio_float32)
 
-            with patch("whisper.load_model") as mock_load:
+            with patch("main.WhisperModel") as mock_cls:
                 mock_model = MagicMock()
                 mock_model.transcribe = MagicMock(
-                    return_value={"text": "test", "language": "en"}
+                    return_value=make_transcribe_result("test")
                 )
-                mock_load.return_value = mock_model
+                mock_cls.return_value = mock_model
 
                 client = FnwisprClient(temp_config_file)
                 client.transcribe_audio(temp_path)

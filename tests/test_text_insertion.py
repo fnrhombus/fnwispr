@@ -15,7 +15,7 @@ class TestTextInsertion:
 
     def test_insert_text_calls_typewrite(self, temp_config_file):
         """Test that insert_text calls pyautogui.typewrite"""
-        with patch("whisper.load_model"):
+        with patch("main.WhisperModel"):
             with patch("pyautogui.typewrite") as mock_typewrite:
                 client = FnwisprClient(temp_config_file)
                 client.insert_text("Hello, World!")
@@ -25,7 +25,7 @@ class TestTextInsertion:
 
     def test_insert_text_with_empty_string(self, temp_config_file):
         """Test inserting empty string"""
-        with patch("whisper.load_model"):
+        with patch("main.WhisperModel"):
             with patch("pyautogui.typewrite") as mock_typewrite:
                 client = FnwisprClient(temp_config_file)
                 client.insert_text("")
@@ -34,7 +34,7 @@ class TestTextInsertion:
 
     def test_insert_text_with_special_characters(self, temp_config_file):
         """Test inserting text with special characters"""
-        with patch("whisper.load_model"):
+        with patch("main.WhisperModel"):
             with patch("pyautogui.typewrite") as mock_typewrite:
                 client = FnwisprClient(temp_config_file)
 
@@ -53,7 +53,7 @@ class TestTextInsertion:
 
     def test_insert_text_with_long_text(self, temp_config_file):
         """Test inserting very long text"""
-        with patch("whisper.load_model"):
+        with patch("main.WhisperModel"):
             with patch("pyautogui.typewrite") as mock_typewrite:
                 client = FnwisprClient(temp_config_file)
 
@@ -64,7 +64,7 @@ class TestTextInsertion:
 
     def test_insert_text_handles_exception(self, temp_config_file):
         """Test that insert_text handles pyautogui errors gracefully"""
-        with patch("whisper.load_model"):
+        with patch("main.WhisperModel"):
             with patch("pyautogui.typewrite", side_effect=Exception("Input blocked")):
                 client = FnwisprClient(temp_config_file)
 
@@ -73,7 +73,7 @@ class TestTextInsertion:
 
     def test_insert_text_with_numbers(self, temp_config_file):
         """Test inserting numbers"""
-        with patch("whisper.load_model"):
+        with patch("main.WhisperModel"):
             with patch("pyautogui.typewrite") as mock_typewrite:
                 client = FnwisprClient(temp_config_file)
                 client.insert_text("1234567890")
@@ -82,7 +82,7 @@ class TestTextInsertion:
 
     def test_insert_text_with_mixed_case(self, temp_config_file):
         """Test inserting mixed case text"""
-        with patch("whisper.load_model"):
+        with patch("main.WhisperModel"):
             with patch("pyautogui.typewrite") as mock_typewrite:
                 client = FnwisprClient(temp_config_file)
                 client.insert_text("ThE QuIcK bRoWn FoX")
@@ -91,7 +91,7 @@ class TestTextInsertion:
 
     def test_insert_text_with_unicode(self, temp_config_file):
         """Test inserting unicode characters"""
-        with patch("whisper.load_model"):
+        with patch("main.WhisperModel"):
             with patch("pyautogui.typewrite") as mock_typewrite:
                 client = FnwisprClient(temp_config_file)
 

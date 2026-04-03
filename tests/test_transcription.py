@@ -10,6 +10,7 @@ import numpy as np
 import pytest
 from scipy.io.wavfile import write as write_wav
 
+from conftest import make_transcribe_result
 from main import FnwisprClient
 
 
@@ -18,15 +19,12 @@ class TestTranscriptionBasics:
 
     def test_transcribe_audio_success(self, temp_config_file, temp_wav_file):
         """Test successful transcription"""
-        with patch("whisper.load_model") as mock_load:
+        with patch("main.WhisperModel") as mock_cls:
             mock_model = MagicMock()
             mock_model.transcribe = MagicMock(
-                return_value={
-                    "text": "Hello, world!",
-                    "language": "en",
-                }
+                return_value=make_transcribe_result("Hello, world!")
             )
-            mock_load.return_value = mock_model
+            mock_cls.return_value = mock_model
 
             client = FnwisprClient(temp_config_file)
             result = client.transcribe_audio(temp_wav_file)
@@ -35,15 +33,12 @@ class TestTranscriptionBasics:
 
     def test_transcribe_audio_strips_whitespace(self, temp_config_file, temp_wav_file):
         """Test that transcribed text is stripped of whitespace"""
-        with patch("whisper.load_model") as mock_load:
+        with patch("main.WhisperModel") as mock_cls:
             mock_model = MagicMock()
             mock_model.transcribe = MagicMock(
-                return_value={
-                    "text": "  Test text with spaces  ",
-                    "language": "en",
-                }
+                return_value=make_transcribe_result("  Test text with spaces  ")
             )
-            mock_load.return_value = mock_model
+            mock_cls.return_value = mock_model
 
             client = FnwisprClient(temp_config_file)
             result = client.transcribe_audio(temp_wav_file)
@@ -54,15 +49,12 @@ class TestTranscriptionBasics:
         self, temp_config_file, temp_wav_file
     ):
         """Test that detected language is returned in result"""
-        with patch("whisper.load_model") as mock_load:
+        with patch("main.WhisperModel") as mock_cls:
             mock_model = MagicMock()
             mock_model.transcribe = MagicMock(
-                return_value={
-                    "text": "Bonjour, monde!",
-                    "language": "fr",
-                }
+                return_value=make_transcribe_result("Bonjour, monde!", "fr")
             )
-            mock_load.return_value = mock_model
+            mock_cls.return_value = mock_model
 
             client = FnwisprClient(temp_config_file)
             result = client.transcribe_audio(temp_wav_file)
@@ -73,15 +65,12 @@ class TestTranscriptionBasics:
         self, temp_config_file, temp_wav_file
     ):
         """Test handling of empty transcription result"""
-        with patch("whisper.load_model") as mock_load:
+        with patch("main.WhisperModel") as mock_cls:
             mock_model = MagicMock()
             mock_model.transcribe = MagicMock(
-                return_value={
-                    "text": "",
-                    "language": "en",
-                }
+                return_value=make_transcribe_result("")
             )
-            mock_load.return_value = mock_model
+            mock_cls.return_value = mock_model
 
             client = FnwisprClient(temp_config_file)
             result = client.transcribe_audio(temp_wav_file)
@@ -110,15 +99,12 @@ class TestTranscriptionLanguage:
             temp_config = f.name
 
         try:
-            with patch("whisper.load_model") as mock_load:
+            with patch("main.WhisperModel") as mock_cls:
                 mock_model = MagicMock()
                 mock_model.transcribe = MagicMock(
-                    return_value={
-                        "text": "Hola, mundo!",
-                        "language": "es",
-                    }
+                    return_value=make_transcribe_result("Hola, mundo!", "es")
                 )
-                mock_load.return_value = mock_model
+                mock_cls.return_value = mock_model
 
                 client = FnwisprClient(temp_config)
                 result = client.transcribe_audio(temp_wav_file)
@@ -136,15 +122,12 @@ class TestTranscriptionLanguage:
         self, temp_config_file, temp_wav_file
     ):
         """Test transcription with auto-detect language"""
-        with patch("whisper.load_model") as mock_load:
+        with patch("main.WhisperModel") as mock_cls:
             mock_model = MagicMock()
             mock_model.transcribe = MagicMock(
-                return_value={
-                    "text": "Test text",
-                    "language": "en",
-                }
+                return_value=make_transcribe_result("Test text")
             )
-            mock_load.return_value = mock_model
+            mock_cls.return_value = mock_model
 
             client = FnwisprClient(temp_config_file)
             result = client.transcribe_audio(temp_wav_file)
@@ -158,7 +141,7 @@ class TestTranscriptionErrors:
 
     def test_transcribe_audio_file_not_found(self, temp_config_file):
         """Test handling of missing audio file"""
-        with patch("whisper.load_model"):
+        with patch("main.WhisperModel"):
             client = FnwisprClient(temp_config_file)
             result = client.transcribe_audio("/nonexistent/path.wav")
 
@@ -166,10 +149,10 @@ class TestTranscriptionErrors:
 
     def test_transcribe_audio_whisper_error(self, temp_config_file, temp_wav_file):
         """Test handling of Whisper transcription errors"""
-        with patch("whisper.load_model") as mock_load:
+        with patch("main.WhisperModel") as mock_cls:
             mock_model = MagicMock()
             mock_model.transcribe = MagicMock(side_effect=Exception("Whisper error"))
-            mock_load.return_value = mock_model
+            mock_cls.return_value = mock_model
 
             client = FnwisprClient(temp_config_file)
             result = client.transcribe_audio(temp_wav_file)
@@ -184,7 +167,7 @@ class TestTranscriptionErrors:
             temp_path = f.name
 
         try:
-            with patch("whisper.load_model"):
+            with patch("main.WhisperModel"):
                 client = FnwisprClient(temp_config_file)
                 result = client.transcribe_audio(temp_path)
 
@@ -201,15 +184,12 @@ class TestTranscriptionIntegration:
 
     def test_full_audio_to_text_flow(self, temp_config_file):
         """Test complete audio recording to text transcription flow"""
-        with patch("whisper.load_model") as mock_load:
+        with patch("main.WhisperModel") as mock_cls:
             mock_model = MagicMock()
             mock_model.transcribe = MagicMock(
-                return_value={
-                    "text": "Test transcription result",
-                    "language": "en",
-                }
+                return_value=make_transcribe_result("Test transcription result")
             )
-            mock_load.return_value = mock_model
+            mock_cls.return_value = mock_model
 
             with patch("sounddevice.InputStream"):
                 client = FnwisprClient(temp_config_file)

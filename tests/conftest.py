@@ -90,22 +90,36 @@ def mock_pyautogui():
         yield {"typewrite": mock_typewrite}
 
 
+def make_transcribe_result(text="test", language="en", language_probability=0.99):
+    """Create a mock faster-whisper transcribe result (segments_generator, info).
+
+    faster-whisper returns (segments_iterator, TranscriptionInfo) where segments
+    have a .text attribute and info has .language and .language_probability.
+    """
+    # Build segment mocks from text — split on None to support multi-segment
+    segment = MagicMock()
+    segment.text = text
+    segments = iter([segment])
+
+    info = MagicMock()
+    info.language = language
+    info.language_probability = language_probability
+
+    return (segments, info)
+
+
 @pytest.fixture
 def mock_whisper():
-    """Mock Whisper model for testing"""
+    """Mock faster-whisper WhisperModel for testing"""
     mock_model = MagicMock()
     mock_model.transcribe = MagicMock(
-        return_value={
-            "text": "This is a test transcription",
-            "language": "en",
-            "segments": [],
-        }
+        return_value=make_transcribe_result("This is a test transcription", "en")
     )
 
-    with patch("whisper.load_model") as mock_load:
-        mock_load.return_value = mock_model
+    with patch("main.WhisperModel") as mock_cls:
+        mock_cls.return_value = mock_model
         yield {
-            "load_model": mock_load,
+            "WhisperModel": mock_cls,
             "model": mock_model,
         }
 
