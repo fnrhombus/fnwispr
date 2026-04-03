@@ -54,7 +54,7 @@ class SettingsWindow:
             raise
 
         self.window.title("fnwispr Settings")
-        self.window.geometry("500x450")
+        self.window.geometry("500x520")
         self.window.resizable(False, False)
 
         # Handle window close
@@ -76,30 +76,79 @@ class SettingsWindow:
         frame = ttk.Frame(self.tabs)
         self.tabs.add(frame, text="Recording")
 
-        # Hotkey configuration
-        ttk.Label(frame, text="Hotkey:", font=("Arial", 10, "bold")).grid(row=0, column=0, sticky="w", padx=10, pady=5)
+        row = 0
+
+        # --- Recording Mode ---
+        ttk.Label(frame, text="Recording Mode:", font=("Arial", 10, "bold")).grid(row=row, column=0, sticky="w", padx=10, pady=5)
+        mode_frame = ttk.Frame(frame)
+        mode_frame.grid(row=row, column=1, sticky="ew", padx=10, pady=5)
+
+        self.recording_mode_var = tk.StringVar(value=self.config.get("recording_mode", "hold"))
+        ttk.Radiobutton(mode_frame, text="Hold to record", variable=self.recording_mode_var, value="hold", command=self._on_recording_mode_change).pack(side="left", padx=(0, 10))
+        ttk.Radiobutton(mode_frame, text="Double-tap to toggle", variable=self.recording_mode_var, value="toggle", command=self._on_recording_mode_change).pack(side="left")
+
+        # --- Hold mode: Hotkey ---
+        row += 1
+        self.hold_label = ttk.Label(frame, text="Hotkey:", font=("Arial", 10, "bold"))
+        self.hold_label.grid(row=row, column=0, sticky="w", padx=10, pady=5)
         hotkey_frame = ttk.Frame(frame)
-        hotkey_frame.grid(row=0, column=1, sticky="ew", padx=10, pady=5)
+        hotkey_frame.grid(row=row, column=1, sticky="ew", padx=10, pady=5)
+        self.hold_hotkey_frame = hotkey_frame
 
         self.hotkey_var = tk.StringVar(value=self.config.get("hotkey", "ctrl+win"))
         hotkey_entry = ttk.Entry(hotkey_frame, textvariable=self.hotkey_var, state="readonly", width=25)
         hotkey_entry.pack(side="left")
-
         ttk.Button(hotkey_frame, text="Record", command=self._record_hotkey, width=10).pack(side="left", padx=5)
 
-        # Microphone device
-        ttk.Label(frame, text="Microphone:", font=("Arial", 10, "bold")).grid(row=1, column=0, sticky="w", padx=10, pady=5)
+        # --- Toggle mode: Toggle key ---
+        row += 1
+        self.toggle_key_label = ttk.Label(frame, text="Toggle Key:", font=("Arial", 10, "bold"))
+        self.toggle_key_label.grid(row=row, column=0, sticky="w", padx=10, pady=5)
+        toggle_key_frame = ttk.Frame(frame)
+        toggle_key_frame.grid(row=row, column=1, sticky="ew", padx=10, pady=5)
+        self.toggle_key_frame = toggle_key_frame
+
+        self.toggle_key_var = tk.StringVar(value=self.config.get("toggle_key", "ctrl_l"))
+        toggle_key_combo = ttk.Combobox(
+            toggle_key_frame,
+            textvariable=self.toggle_key_var,
+            values=["ctrl_l", "ctrl_r", "alt_l", "alt_r", "shift_l", "shift_r"],
+            state="readonly",
+            width=15,
+        )
+        toggle_key_combo.pack(side="left")
+        toggle_key_combo.bind("<<ComboboxSelected>>", self._on_toggle_key_change)
+
+        # --- Toggle mode: Double-tap speed ---
+        row += 1
+        self.tap_speed_label = ttk.Label(frame, text="Tap Speed:", font=("Arial", 10, "bold"))
+        self.tap_speed_label.grid(row=row, column=0, sticky="w", padx=10, pady=5)
+        tap_speed_frame = ttk.Frame(frame)
+        tap_speed_frame.grid(row=row, column=1, sticky="ew", padx=10, pady=5)
+        self.tap_speed_frame = tap_speed_frame
+
+        self.tap_speed_var = tk.DoubleVar(value=self.config.get("double_tap_interval", 0.3))
+        tap_speed_scale = ttk.Scale(tap_speed_frame, from_=0.15, to=0.6, variable=self.tap_speed_var, orient="horizontal", length=150, command=self._on_tap_speed_change)
+        tap_speed_scale.pack(side="left")
+        self.tap_speed_display = ttk.Label(tap_speed_frame, text=f"{self.tap_speed_var.get():.2f}s")
+        self.tap_speed_display.pack(side="left", padx=5)
+
+        # --- Microphone device ---
+        row += 1
+        ttk.Label(frame, text="Microphone:", font=("Arial", 10, "bold")).grid(row=row, column=0, sticky="w", padx=10, pady=5)
         self.device_var = tk.StringVar()
         self.device_combo = ttk.Combobox(frame, textvariable=self.device_var, state="readonly", width=30)
-        self.device_combo.grid(row=1, column=1, sticky="ew", padx=10, pady=5)
+        self.device_combo.grid(row=row, column=1, sticky="ew", padx=10, pady=5)
         self.device_combo.bind("<<ComboboxSelected>>", self._on_device_change)
         self._populate_devices()
 
         # Test microphone button
-        ttk.Button(frame, text="Test Microphone", command=self._test_mic).grid(row=2, column=0, columnspan=2, pady=10)
+        row += 1
+        ttk.Button(frame, text="Test Microphone", command=self._test_mic).grid(row=row, column=0, columnspan=2, pady=10)
 
         # Language configuration
-        ttk.Label(frame, text="Language:", font=("Arial", 10, "bold")).grid(row=3, column=0, sticky="w", padx=10, pady=5)
+        row += 1
+        ttk.Label(frame, text="Language:", font=("Arial", 10, "bold")).grid(row=row, column=0, sticky="w", padx=10, pady=5)
         self.language_var = tk.StringVar(value=self.config.get("language") or "Auto-detect")
         language_combo = ttk.Combobox(
             frame,
@@ -108,10 +157,13 @@ class SettingsWindow:
             state="readonly",
             width=30,
         )
-        language_combo.grid(row=3, column=1, sticky="ew", padx=10, pady=5)
+        language_combo.grid(row=row, column=1, sticky="ew", padx=10, pady=5)
         language_combo.bind("<<ComboboxSelected>>", self._on_language_change)
 
         frame.columnconfigure(1, weight=1)
+
+        # Show/hide mode-specific controls
+        self._update_mode_visibility()
 
     def _create_model_tab(self):
         """Create Model configuration tab"""
@@ -216,6 +268,51 @@ class SettingsWindow:
             self.hotkey_var.set(hotkey_str)
             self._config_changed("hotkey", hotkey_str)
             window.destroy()
+
+    def _update_mode_visibility(self):
+        """Show/hide controls based on recording mode"""
+        is_toggle = self.recording_mode_var.get() == "toggle"
+
+        # Hold mode controls
+        state = "disabled" if is_toggle else "normal"
+        self.hold_label.configure(foreground="gray" if is_toggle else "")
+        for child in self.hold_hotkey_frame.winfo_children():
+            try:
+                child.configure(state=state)
+            except tk.TclError:
+                pass
+
+        # Toggle mode controls
+        toggle_state = "normal" if is_toggle else "disabled"
+        toggle_color = "" if is_toggle else "gray"
+        self.toggle_key_label.configure(foreground=toggle_color)
+        self.tap_speed_label.configure(foreground=toggle_color)
+        for child in self.toggle_key_frame.winfo_children():
+            try:
+                child.configure(state="readonly" if is_toggle else "disabled")
+            except tk.TclError:
+                pass
+        for child in self.tap_speed_frame.winfo_children():
+            try:
+                child.configure(state=toggle_state)
+            except tk.TclError:
+                pass
+
+    def _on_recording_mode_change(self):
+        """Handle recording mode change"""
+        mode = self.recording_mode_var.get()
+        self._update_mode_visibility()
+        self._config_changed("recording_mode", mode)
+
+    def _on_toggle_key_change(self, event=None):
+        """Handle toggle key change"""
+        self._config_changed("toggle_key", self.toggle_key_var.get())
+
+    def _on_tap_speed_change(self, value=None):
+        """Handle double-tap speed change"""
+        interval = round(self.tap_speed_var.get(), 2)
+        self.tap_speed_display.configure(text=f"{interval:.2f}s")
+        self._config_changed("double_tap_interval", interval)
 
     def _on_device_change(self, event=None):
         """Handle microphone device change"""
