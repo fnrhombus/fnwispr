@@ -96,6 +96,12 @@ class FnwisprClient:
         self.hotkey_combo = self.parse_hotkey(self.config.get("hotkey", "ctrl+win"))
         logger.info(f"Hotkey combination: {self.config.get('hotkey', 'ctrl+win')}")
 
+        # Toggle mode state
+        self._toggle_key = self._parse_single_key(self.config.get("toggle_key", "ctrl_l"))
+        self._double_tap_interval = self.config.get("double_tap_interval", 0.3)
+        self._last_toggle_tap_time = 0.0
+        self._toggle_key_held = False
+
         # Load Whisper model
         self._load_whisper_model()
 
@@ -198,6 +204,23 @@ class FnwisprClient:
             with open(config_path, 'r') as f:
                 config = json.load(f)
                 logger.info(f"Configuration loaded from {config_path}")
+
+                # Backfill any new fields from defaults
+                defaults = {
+                    "recording_mode": "toggle",
+                    "toggle_key": "ctrl_l",
+                    "double_tap_interval": 0.3,
+                }
+                updated = False
+                for key, value in defaults.items():
+                    if key not in config:
+                        config[key] = value
+                        updated = True
+                if updated:
+                    with open(config_path, 'w') as fw:
+                        json.dump(config, fw, indent=2)
+                    logger.info("Config updated with new default fields")
+
                 return config
         except FileNotFoundError:
             logger.error(f"Configuration file not found: {config_path}")
@@ -220,6 +243,9 @@ class FnwisprClient:
         """
         default_config = {
             "hotkey": "ctrl+win",
+            "recording_mode": "toggle",
+            "toggle_key": "ctrl_l",
+            "double_tap_interval": 0.3,
             "model": "base",
             "sample_rate": 16000,
             "microphone_device": None,
@@ -334,6 +360,55 @@ class FnwisprClient:
                 logger.warning(f"Unknown key: {part}")
 
         return keys
+
+    def _parse_single_key(self, key_string: str):
+        """
+        Parse a single key string into a pynput key object.
+
+        Args:
+            key_string: String like "ctrl_l", "shift_r", "alt", "a", etc.
+
+        Returns:
+            A keyboard.Key or keyboard.KeyCode object
+        """
+        key_mapping = {
+            "ctrl": keyboard.Key.ctrl,
+            "ctrl_l": keyboard.Key.ctrl_l,
+            "ctrl_r": keyboard.Key.ctrl_r,
+            "alt": keyboard.Key.alt,
+            "alt_l": keyboard.Key.alt_l,
+            "alt_r": keyboard.Key.alt_r,
+            "shift": keyboard.Key.shift,
+            "shift_l": keyboard.Key.shift_l,
+            "shift_r": keyboard.Key.shift_r,
+            "cmd": keyboard.Key.cmd,
+            "win": keyboard.Key.cmd,
+        }
+        key_str = key_string.lower().strip()
+        if key_str in key_mapping:
+            return key_mapping[key_str]
+        elif len(key_str) == 1:
+            return keyboard.KeyCode.from_char(key_str)
+        else:
+            logger.warning(f"Unknown toggle key: {key_str}, defaulting to ctrl_l")
+            return keyboard.Key.ctrl_l
+
+    def _is_toggle_key(self, key) -> bool:
+        """
+        Check if a raw key event matches the configured toggle key.
+        Handles generic modifiers (e.g., toggle_key="ctrl" matches both ctrl_l and ctrl_r).
+        """
+        toggle = self._toggle_key
+
+        # Generic modifier matching
+        if toggle == keyboard.Key.ctrl:
+            return key in (keyboard.Key.ctrl, keyboard.Key.ctrl_l, keyboard.Key.ctrl_r)
+        if toggle == keyboard.Key.alt:
+            return key in (keyboard.Key.alt, keyboard.Key.alt_l, keyboard.Key.alt_r)
+        if toggle == keyboard.Key.shift:
+            return key in (keyboard.Key.shift, keyboard.Key.shift_l, keyboard.Key.shift_r)
+
+        return key == toggle
 
     def audio_callback(self, indata, frames, time_info, status):
         """
@@ -522,15 +597,31 @@ class FnwisprClient:
     def on_press(self, key):
         """Keyboard press event handler"""
         try:
-            # Normalize the key (handle left/right variants of modifiers)
             normalized_key = self.normalize_key(key)
-
-            # Track currently pressed key
             self.current_keys.add(normalized_key)
 
-            # Check if all hotkey keys are currently pressed
-            if self.hotkey_combo.issubset(self.current_keys):
-                self.start_recording()
+            recording_mode = self.config.get("recording_mode", "hold")
+
+            if recording_mode == "toggle":
+                # Ignore key-repeat events (key already held down)
+                if self._is_toggle_key(key) and not self._toggle_key_held:
+                    self._toggle_key_held = True
+                    now = time.monotonic()
+
+                    if self.recording:
+                        # Third tap: stop recording
+                        self.stop_recording()
+                    elif now - self._last_toggle_tap_time <= self._double_tap_interval:
+                        # Second tap within interval: start recording
+                        self._last_toggle_tap_time = 0.0
+                        self.start_recording()
+                    else:
+                        # First tap: record timestamp
+                        self._last_toggle_tap_time = now
+            else:
+                # Hold mode: start recording when all hotkey keys are pressed
+                if self.hotkey_combo.issubset(self.current_keys):
+                    self.start_recording()
 
         except Exception as e:
             logger.debug(f"Error in on_press: {e}")
@@ -538,17 +629,22 @@ class FnwisprClient:
     def on_release(self, key):
         """Keyboard release event handler"""
         try:
-            # Normalize the key (handle left/right variants of modifiers)
             normalized_key = self.normalize_key(key)
-
-            # Remove released key from tracking
             self.current_keys.discard(normalized_key)
 
-            # Stop recording when any of the hotkey keys is released
-            if normalized_key in self.hotkey_combo and self.recording:
-                self.stop_recording()
+            recording_mode = self.config.get("recording_mode", "hold")
 
-            # Exit on Escape key
+            if recording_mode == "toggle":
+                # Clear held flag so next press is detected as a new tap
+                if self._is_toggle_key(key):
+                    self._toggle_key_held = False
+                # In toggle mode, release does NOT stop recording
+            else:
+                # Hold mode: stop recording when any hotkey key is released
+                if normalized_key in self.hotkey_combo and self.recording:
+                    self.stop_recording()
+
+            # Exit on Escape key (always active)
             if key == keyboard.Key.esc:
                 logger.info("Escape pressed, shutting down...")
                 self.is_running = False
@@ -638,6 +734,25 @@ class FnwisprClient:
         new_hotkey = new_config.get("hotkey")
         if old_hotkey != new_hotkey:
             self.hotkey_combo = self.parse_hotkey(new_hotkey)
+
+        # Handle toggle key change
+        old_toggle_key = self.config.get("toggle_key", "ctrl_l")
+        new_toggle_key = new_config.get("toggle_key", "ctrl_l")
+        if old_toggle_key != new_toggle_key:
+            self._toggle_key = self._parse_single_key(new_toggle_key)
+
+        # Handle double-tap interval change
+        new_interval = new_config.get("double_tap_interval", 0.3)
+        self._double_tap_interval = new_interval
+
+        # Handle recording mode change - reset toggle state
+        old_mode = self.config.get("recording_mode", "hold")
+        new_mode = new_config.get("recording_mode", "hold")
+        if old_mode != new_mode:
+            self._last_toggle_tap_time = 0.0
+            self._toggle_key_held = False
+            if self.recording:
+                self.stop_recording()
 
         # Handle auto-start change
         old_auto_start = self.config.get("auto_start", False)
