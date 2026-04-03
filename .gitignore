@@ -62,3 +62,14 @@ htmlcov/
 # Environment variables
 .env
 .env.local
+
+# PyInstaller
+*.spec.bak
+dist/
+build/
+
+# Inno Setup
+Output/
+
+# Generated icons
+client/icons/*.ico

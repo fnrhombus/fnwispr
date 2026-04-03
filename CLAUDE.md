@@ -10,6 +10,26 @@ fnwispr is a **unified Windows speech-to-text application** with local processin
 - **System Tray GUI**: Graphical interface for configuration and control
 - **Local Processing**: Everything runs on the user's machine without external services
 
+## Branching & Releases
+
+**Branching model**:
+- **`dev`** is the main development branch. All work happens here.
+- **`main`** is the release branch. **Never commit directly to main.**
+- Merging `dev` → `main` triggers the release workflow automatically.
+
+**Versioning** follows **Semantic Versioning** (semver.org). The single source of truth is the root `VERSION` file.
+
+- **MAJOR** (X.0.0): Breaking changes to user-facing behavior or configuration format
+- **MINOR** (0.X.0): New features, new settings, new GUI elements
+- **PATCH** (0.0.X): Bug fixes, performance improvements, internal refactors
+
+**Release rules**:
+- Bump `VERSION` on `dev` before merging to `main`
+- `client/setup.py` and `client/main.py` both read from `VERSION` automatically
+- The release workflow reads `VERSION`, creates the `vX.Y.Z` tag, builds the installer, and publishes a draft GitHub Release
+- If the tag already exists, the workflow skips (no duplicate releases)
+- Pre-1.0: minor bumps may include breaking changes
+
 **Architecture Highlights**:
 1. Windows global hotkeys (via `pynput`)
 2. System audio devices (via `sounddevice`)

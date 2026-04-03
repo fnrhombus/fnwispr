@@ -1,0 +1,201 @@
+# Build, sign, and release fnwispr for Windows.
+#
+# Trigger: any push to main
+# Flow:
+#   1. build   — PyInstaller bundle → Inno Setup installer → upload unsigned artifact
+#   2. sign    — SignPath signs the installer (free for OSS)
+#   3. release — Tag the commit, create GitHub Release with the signed installer
+#
+# Version is read from the VERSION file in the repo root.
+#
+# Required secrets (configure in repo Settings → Secrets):
+#   SIGNPATH_API_TOKEN        — from SignPath.io (CI user token)
+#   SIGNPATH_ORGANIZATION_ID  — your SignPath org ID
+#
+# Required SignPath configuration:
+#   Project slug: fnwispr
+#   Signing policy slug: release-signing
+
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+
+  # Allow manual trigger for testing the workflow
+  workflow_dispatch:
+
+permissions:
+  contents: write       # create tags and releases
+  actions: read         # SignPath needs to read artifact
+  id-token: write       # SignPath OIDC authentication
+
+env:
+  PYTHON_VERSION: "3.11"
+
+jobs:
+  # ─── Job 1: Build the unsigned installer ────────────────────────────
+  build:
+    name: Build installer
+    runs-on: windows-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      installer_name: ${{ steps.version.outputs.installer_name }}
+      tag_exists: ${{ steps.version.outputs.tag_exists }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read version from VERSION file
+        id: version
+        shell: bash
+        run: |
+          VERSION=$(cat VERSION | tr -d '[:space:]')
+          if [ -z "$VERSION" ]; then
+            echo "::error::VERSION file is empty or missing"
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "installer_name=fnwispr-${VERSION}-setup.exe" >> "$GITHUB_OUTPUT"
+          echo "Building version: $VERSION"
+
+          # Check if this version tag already exists
+          if git rev-parse "v${VERSION}" >/dev/null 2>&1; then
+            echo "tag_exists=true" >> "$GITHUB_OUTPUT"
+            echo "::warning::Tag v${VERSION} already exists — skipping release"
+          else
+            echo "tag_exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Set up Python ${{ env.PYTHON_VERSION }}
+        if: steps.version.outputs.tag_exists == 'false'
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip
+
+      - name: Install dependencies
+        if: steps.version.outputs.tag_exists == 'false'
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r client/requirements.txt
+          pip install pyinstaller
+
+      - name: Convert SVG icon to ICO
+        if: steps.version.outputs.tag_exists == 'false'
+        run: python packaging/convert_icon.py client/icons/app_icon.svg client/icons/app_icon.ico
+
+      - name: Build with PyInstaller
+        if: steps.version.outputs.tag_exists == 'false'
+        working-directory: packaging
+        run: pyinstaller fnwispr.spec --noconfirm
+
+      - name: Verify build output
+        if: steps.version.outputs.tag_exists == 'false'
+        shell: bash
+        run: |
+          if [ ! -f "dist/fnwispr/fnwispr.exe" ]; then
+            echo "::error::PyInstaller output not found at dist/fnwispr/fnwispr.exe"
+            exit 1
+          fi
+          echo "Build output size:"
+          du -sh dist/fnwispr/
+
+      - name: Build installer with Inno Setup
+        if: steps.version.outputs.tag_exists == 'false'
+        run: |
+          iscc /DMyAppVersion=${{ steps.version.outputs.version }} packaging/fnwispr.iss
+
+      - name: Verify installer
+        if: steps.version.outputs.tag_exists == 'false'
+        shell: bash
+        run: |
+          INSTALLER="dist/${{ steps.version.outputs.installer_name }}"
+          if [ ! -f "$INSTALLER" ]; then
+            echo "::error::Installer not found at $INSTALLER"
+            exit 1
+          fi
+          echo "Installer size: $(du -h "$INSTALLER" | cut -f1)"
+
+      - name: Upload unsigned installer
+        if: steps.version.outputs.tag_exists == 'false'
+        uses: actions/upload-artifact@v4
+        with:
+          name: unsigned-installer
+          path: dist/${{ steps.version.outputs.installer_name }}
+          if-no-files-found: error
+          retention-days: 7
+
+  # ─── Job 2: Sign with SignPath ──────────────────────────────────────
+  sign:
+    name: Sign installer
+    needs: build
+    runs-on: ubuntu-latest
+    if: needs.build.outputs.tag_exists == 'false'
+
+    steps:
+      - name: Download unsigned installer
+        uses: actions/download-artifact@v4
+        with:
+          name: unsigned-installer
+          path: unsigned/
+
+      - name: Submit signing request to SignPath
+        uses: signpath/github-action-submit-signing-request@v1
+        with:
+          api-token: ${{ secrets.SIGNPATH_API_TOKEN }}
+          organization-id: ${{ secrets.SIGNPATH_ORGANIZATION_ID }}
+          project-slug: fnwispr
+          signing-policy-slug: release-signing
+          artifact-configuration-slug: default
+          github-artifact-id: unsigned-installer
+          wait-for-completion: true
+          wait-for-completion-timeout-in-seconds: 600
+          output-artifact-directory: signed/
+
+      - name: Upload signed installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: signed-installer
+          path: signed/${{ needs.build.outputs.installer_name }}
+          if-no-files-found: error
+          retention-days: 30
+
+  # ─── Job 3: Tag and create GitHub Release ───────────────────────────
+  release:
+    name: Create release
+    needs: [build, sign]
+    runs-on: ubuntu-latest
+    if: needs.build.outputs.tag_exists == 'false'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create version tag
+        run: |
+          git tag "v${{ needs.build.outputs.version }}"
+          git push origin "v${{ needs.build.outputs.version }}"
+
+      - name: Download signed installer
+        uses: actions/download-artifact@v4
+        with:
+          name: signed-installer
+          path: release/
+
+      - name: Generate SHA256 checksum
+        working-directory: release
+        run: |
+          sha256sum "${{ needs.build.outputs.installer_name }}" > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ needs.build.outputs.version }}
+          name: fnwispr v${{ needs.build.outputs.version }}
+          draft: true
+          generate_release_notes: true
+          files: |
+            release/${{ needs.build.outputs.installer_name }}
+            release/SHA256SUMS.txt

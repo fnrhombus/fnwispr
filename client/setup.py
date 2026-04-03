@@ -12,9 +12,13 @@ readme_file = this_directory / "README.md"
 if readme_file.exists():
     long_description = readme_file.read_text(encoding='utf-8')
 
+# Read version from single source of truth
+version_file = this_directory / "VERSION"
+version = version_file.read_text(encoding='utf-8').strip()
+
 setup(
     name="fnwispr-client",
-    version="1.0.0",
+    version=version,
     description="Windows client for fnwispr speech-to-text service",
     long_description=long_description,
     long_description_content_type="text/markdown",
