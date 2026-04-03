@@ -1,9 +1,8 @@
 {
   // Python
-  "python.defaultInterpreterPath": "${workspaceFolder}/venv/Scripts/python.exe",
+  "python.defaultInterpreterPath": "D:\\Users\\Tom\\AppData\\Local\\mise\\installs\\python\\3.14.3\\python.exe",
   "python.terminal.activateEnvironment": true,
   "python.terminal.executeInFileDir": true,
-
   // Linting
   "python.linting.enabled": true,
   "python.linting.flake8Enabled": true,
@@ -12,20 +11,19 @@
     "--max-line-length=120",
     "--ignore=E203,W503"
   ],
-
   // Formatting
   "python.formatting.provider": "black",
   "python.formatting.blackArgs": [
     "--line-length=120"
   ],
-
   // Editor
   "editor.formatOnSave": true,
   "editor.codeActionsOnSave": {
     "source.organizeImports": "explicit"
   },
-  "editor.rulers": [120],
-
+  "editor.rulers": [
+    120
+  ],
   // Files
   "files.exclude": {
     "**/__pycache__": true,
@@ -43,14 +41,12 @@
     "**/.mypy_cache/**": true,
     "**/htmlcov/**": true
   },
-
   // Testing
   "python.testing.pytestEnabled": true,
   "python.testing.unittestEnabled": false,
   "python.testing.pytestArgs": [
     "tests"
   ],
-
   // Terminal
   "terminal.integrated.profiles.windows": {
     "PowerShell": {
@@ -59,14 +55,11 @@
     }
   },
   "terminal.integrated.defaultProfile.windows": "PowerShell",
-
   // Docker
   "docker.dockerPath": "docker",
   "docker.composeCommand": "docker-compose",
-
   // Git
   "git.ignoreLimitWarning": true,
-
   // Search
   "search.exclude": {
     "**/__pycache__": true,
@@ -78,11 +71,9 @@
     "**/.venv": true,
     "**/venv": true
   },
-
   // Trailing whitespace
   "files.trimTrailingWhitespace": true,
   "files.insertFinalNewline": true,
-
   // Language-specific
   "[python]": {
     "editor.defaultFormatter": "ms-python.black-formatter",
