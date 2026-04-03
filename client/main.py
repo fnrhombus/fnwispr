@@ -37,7 +37,7 @@ import winreg
 import numpy as np
 import pyautogui
 import sounddevice as sd
-import whisper
+from faster_whisper import WhisperModel
 from pynput import keyboard
 from scipy.io.wavfile import write as write_wav
 
@@ -143,11 +143,23 @@ class FnwisprClient:
         model_name = self.config.get("model", "base")
         logger.info(f"Loading Whisper model: {model_name}")
         try:
-            self.whisper_model = whisper.load_model(model_name)
-            logger.info(f"Whisper model '{model_name}' loaded successfully")
+            # Use CUDA if available, otherwise CPU with int8 quantization for speed
+            device = "cuda" if self._cuda_available() else "cpu"
+            compute_type = "float16" if device == "cuda" else "int8"
+            self.whisper_model = WhisperModel(model_name, device=device, compute_type=compute_type)
+            logger.info(f"Whisper model '{model_name}' loaded successfully (device={device}, compute_type={compute_type})")
         except Exception as e:
             logger.error(f"Failed to load Whisper model '{model_name}': {e}")
             raise
+
+    @staticmethod
+    def _cuda_available() -> bool:
+        """Check if CUDA is available for faster-whisper (CTranslate2)"""
+        try:
+            import ctranslate2
+            return "cuda" in ctranslate2.get_supported_compute_types("cuda")
+        except Exception:
+            return False
 
     def _init_microphone(self, is_startup: bool = False):
         """
@@ -446,7 +458,7 @@ class FnwisprClient:
 
     def transcribe_audio(self, audio_path: str) -> Optional[str]:
         """
-        Transcribe audio file using local Whisper model
+        Transcribe audio file using local faster-whisper model
 
         Args:
             audio_path: Path to audio file
@@ -467,9 +479,7 @@ class FnwisprClient:
 
             # Convert to float32 and normalize (Whisper expects float32 in range [-1, 1])
             if audio_data.dtype != np.float32:
-                # Convert to float32
                 audio_float = audio_data.astype(np.float32)
-                # Normalize to [-1, 1] range
                 if audio_data.dtype == np.int16:
                     audio_float = audio_float / 32768.0
                 elif audio_data.dtype == np.int32:
@@ -485,13 +495,13 @@ class FnwisprClient:
 
             logger.debug(f"Prepared audio: shape={audio_float.shape}, dtype={audio_float.dtype}, min={audio_float.min():.4f}, max={audio_float.max():.4f}")
 
-            # Transcribe using the audio data directly (not file path)
-            result = self.whisper_model.transcribe(audio_float, language=language)
+            # faster-whisper returns (segments_generator, info)
+            segments, info = self.whisper_model.transcribe(audio_float, language=language)
 
-            transcribed_text = result.get("text", "").strip()
-            detected_language = result.get("language")
+            # Collect all segment texts
+            transcribed_text = " ".join(segment.text.strip() for segment in segments).strip()
 
-            logger.info(f"Transcription successful. Language: {detected_language}")
+            logger.info(f"Transcription successful. Language: {info.language} (probability: {info.language_probability:.2f})")
             logger.info(f"Transcribed text: {transcribed_text}")
 
             return transcribed_text

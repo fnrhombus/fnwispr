@@ -12,18 +12,16 @@ Usage:
 import os
 from PyInstaller.utils.hooks import collect_data_files, collect_submodules
 
-# Collect Whisper's asset files (mel filters, tokenizers, etc.)
-# These are .npz and .tiktoken files that whisper.load_model() needs at runtime.
-whisper_datas = collect_data_files("whisper")
-
-# Collect tiktoken data files (used by Whisper's tokenizer)
-tiktoken_datas = collect_data_files("tiktoken")
+# Collect faster-whisper and ctranslate2 data files
+faster_whisper_datas = collect_data_files("faster_whisper")
+ctranslate2_datas = collect_data_files("ctranslate2")
 
 # Hidden imports that PyInstaller's analysis misses
 hidden_imports = (
-    collect_submodules("whisper")
-    + collect_submodules("tiktoken")
-    + collect_submodules("tiktoken_ext")
+    collect_submodules("faster_whisper")
+    + collect_submodules("ctranslate2")
+    + collect_submodules("huggingface_hub")
+    + collect_submodules("tokenizers")
     + [
         # Platform-specific backends
         "pystray._win32",
@@ -34,12 +32,6 @@ hidden_imports = (
         "scipy.io.wavfile",
         # PIL/Pillow backends
         "PIL._tkinter_finder",
-        # Torch backends (PyInstaller often misses these)
-        "torch",
-        "torch.nn",
-        "torch.nn.functional",
-        # Numba (used by some whisper features)
-        "numba",
     ]
 )
 
@@ -47,8 +39,8 @@ a = Analysis(
     ["../client/main.py"],
     pathex=["../client"],
     binaries=[],
-    datas=whisper_datas
-    + tiktoken_datas
+    datas=faster_whisper_datas
+    + ctranslate2_datas
     + [
         ("../VERSION", "."),
         ("../client/icons/app_icon.svg", "icons"),
@@ -73,6 +65,8 @@ a = Analysis(
         "flake8",
         "mypy",
         "sphinx",
+        # torch is no longer needed (replaced by ctranslate2 via faster-whisper)
+        "torch",
     ],
     noarchive=False,
 )
