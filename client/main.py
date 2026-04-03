@@ -207,7 +207,7 @@ class FnwisprClient:
 
                 # Backfill any new fields from defaults
                 defaults = {
-                    "recording_mode": "toggle",
+                    "recording_mode": "hold",
                     "toggle_key": "ctrl_l",
                     "double_tap_interval": 0.3,
                 }
@@ -243,7 +243,7 @@ class FnwisprClient:
         """
         default_config = {
             "hotkey": "ctrl+win",
-            "recording_mode": "toggle",
+            "recording_mode": "hold",
             "toggle_key": "ctrl_l",
             "double_tap_interval": 0.3,
             "model": "base",
