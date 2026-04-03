@@ -4,7 +4,7 @@
 
 ### 1. SignPath (free code signing for OSS)
 
-1. Go to [signpath.io](https://signpath.io/open-source) and apply for the OSS program
+1. Go to [SignPath Foundation](https://signpath.org) and click **Apply**
    - You'll need your public GitHub repo URL
    - Approval typically takes 1-3 business days
 
